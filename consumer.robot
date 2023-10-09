@@ -1,80 +1,68 @@
 *** Settings ***
-Library     Collections
-Library     RPA.Browser.Selenium
-Library     RPA.Robocorp.WorkItems
-Library     RPA.Tables
+Documentation       Inhuman Insurance, Inc. Artificial Intelligence System robot.
+...                 Consumes traffic data work items.
+
+Resource            shared.robot
 
 
 *** Tasks ***
-Consume items
-    [Documentation]    Login and then cycle through work items.
-    TRY
-        Login
-        For Each Input Work Item    Handle item
-    EXCEPT    AS    ${err}
-        Log    ${err}    level=ERROR
-        Release Input Work Item
-        ...    state=FAILED
-        ...    exception_type=APPLICATION
-        ...    code=UNCAUGHT_ERROR
-        ...    message=${err}
-    END
+Consume traffic data work items
+    For Each Input Work Item    Process traffic data
 
 
 *** Keywords ***
-Login
-    [Documentation]
-    ...    Simulates a login that fails 1/5 times to highlight APPLICATION exception handling.
-    ...    In this example login is performed only once for all work items.
-    ${Login as James Bond}=    Evaluate    random.randint(1, 5)
-    IF    ${Login as James Bond} != 1
-        Log    Logged in as Bond. James Bond.
+Process traffic data
+    ${payload}=    Get Work Item Payload
+    ${traffic_data}=    Set Variable    ${payload}[${WORK_ITEM_NAME}]
+    ${valid}=    Validate traffic data    ${traffic_data}
+    IF    ${valid}
+        Post traffic data to sales system    ${traffic_data}
     ELSE
-        Fail    Login failed
+        Handle invalid traffic data    ${traffic_data}
     END
 
-Action for item
-    [Documentation]
-    ...    Simulates handling of one work item that fails 1/5 times in
-    ...    two different ways to highlight BUSINESS and APPLICATION exception handling
-    ...    and how you can handle each differently from the main "Handle item" keyword.
-    [Arguments]    ${payload}
-    ${Item Action OK}=    Evaluate    random.randint(1, 15)
-    IF    ${Item Action OK} not in [1,2,3]
-        Log    Did the first thing for: ${payload}
-    ELSE IF    ${Item Action OK} == 1
-        Fail    Invalid data in payload: ${payload}.
-    ELSE IF    ${Item Action OK} == 2
-        Fail    Application timed out, try again later.
-    ELSE IF    ${Item Action OK} == 3
-        Fail    I'm an unexpected error
+Validate traffic data
+    [Arguments]    ${traffic_data}
+    ${country}=    Get Value From Json    ${traffic_data}    $.country
+    ${valid}=    Evaluate    len("${country}") == 3
+    RETURN    ${valid}
+
+Post traffic data to sales system
+    [Arguments]    ${traffic_data}
+    ${status}    ${return}=    Run Keyword And Ignore Error
+    ...    POST
+    ...    https://robocorp.com/inhuman-insurance-inc/sales-system-api
+    ...    json=${traffic_data}
+    Handle traffic API response    ${status}    ${return}    ${traffic_data}
+
+Handle traffic API response
+    [Arguments]    ${status}    ${return}    ${traffic_data}
+    IF    "${status}" == "PASS"
+        Handle traffic API OK response
+    ELSE
+        Handle traffic API error response    ${return}    ${traffic_data}
     END
 
-Handle item
-    [Documentation]    Error handling around one work item.
-    ${payload}=    Get Work Item Variables
-    TRY
-        Action for item    ${payload}
-        Release Input Work Item    DONE
-    EXCEPT    Invalid data    type=START    AS    ${err}
-        # Giving a good error message here means that data related errors can
-        # be fixed faster in Control Room.
-        # You can extract the text from the underlying error message.
-        ${error_message}=    Set Variable
-        ...    Data may be invalid, encountered error: ${err}
-        Log    ${error_message}    level=ERROR
-        Release Input Work Item
-        ...    state=FAILED
-        ...    exception_type=BUSINESS
-        ...    code=INVALID_DATA
-        ...    message=${error_message}
-    EXCEPT    *timed out*    type=GLOB    AS    ${err}
-        ${error_message}=    Set Variable
-        ...    Application error encountered: ${err}
-        Log    ${error_message}    level=ERROR
-        Release Input Work Item
-        ...    state=FAILED
-        ...    exception_type=APPLICATION
-        ...    code=TIMEOUT
-        ...    message=${error_message}
-    END
+Handle traffic API OK response
+    Release Input Work Item    DONE
+
+Handle traffic API error response
+    [Arguments]    ${return}    ${traffic_data}
+    Log
+    ...    Traffic data posting failed: ${traffic_data} ${return}
+    ...    ERROR
+    Release Input Work Item
+    ...    state=FAILED
+    ...    exception_type=APPLICATION
+    ...    code=TRAFFIC_DATA_POST_FAILED
+    ...    message=${return}
+
+Handle invalid traffic data
+    [Arguments]    ${traffic_data}
+    ${message}=    Set Variable    Invalid traffic data: ${traffic_data}
+    Log    ${message}    WARN
+    Release Input Work Item
+    ...    state=FAILED
+    ...    exception_type=BUSINESS
+    ...    code=INVALID_TRAFFIC_DATA
+    ...    message=${message}

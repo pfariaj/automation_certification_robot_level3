@@ -2,10 +2,11 @@
 # https://github.com/robocorp/rcc/blob/master/docs/recipes.md#what-is-in-robotyaml
 
 tasks:
-  Produce:
-    robotTaskName: Produce items
-  Consume:
-    robotTaskName: Consume items
+  Produce traffic data work items:
+    robotTaskName: Produce traffic data work items
+  Consume traffic data work items:
+    robotTaskName: Consume traffic data work items
+
 
 environmentConfigs:
   - environment_windows_amd64_freeze.yaml
@@ -13,11 +14,11 @@ environmentConfigs:
   - environment_darwin_amd64_freeze.yaml
   - conda.yaml
 
-artifactsDir: output
+artifactsDir: output  
 
-PATH: 
+PATH:
   - .
-PYTHONPATH: 
+PYTHONPATH:
   - .
 ignoreFiles:
   - .gitignore
