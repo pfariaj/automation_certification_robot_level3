@@ -35,6 +35,20 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - name: Robot
+      run: python -m robot --outputdir output tests
+    - name: Run Test and create report
+      run: python -m robot -d reports -x junit-report.xml tests"
+    - name: Run Robot Framework tests and generate report
       run: |
-        pytest
+             echo "ROBOT_RC=$?" >> "$GITHUB_ENV"  
+        # - name: If Auto Test Pass Rate Not 100%, Job Will Fail
+        #   if: env.ROBOT_RC != '0'
+        #   run: |
+        #     echo "Auto Test Pass Rate Not 100%, Please Check Test Result"
+        #     exit 1
+    - name: Publish test results
+      uses: actions/upload-artifact@v2
+      with:
+       name: robot-test-results
+       path: output
