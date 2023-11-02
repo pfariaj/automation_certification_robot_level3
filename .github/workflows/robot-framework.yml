@@ -51,4 +51,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
        name: robot-test-results
-       path: output
+       path: results
