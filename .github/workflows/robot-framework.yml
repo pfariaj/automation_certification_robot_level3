@@ -39,6 +39,6 @@ jobs:
       run: python -m robot --outputdir output tests.robot
     - name: Publish test results
       uses: actions/upload-artifact@v3
-        name: my-artifact
-      path: path/output/
-
+      with:
+        name: log
+        path: path/output/
